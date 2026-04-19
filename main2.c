@@ -2,10 +2,11 @@
 #include "timer.h"
 
 int main() {
-    LedInit();
-    InitTimer0Match0(1000000);
+    LedInit(); //ustawienie ledów jako wyjść
+    InitTimer0Match0(1000000); // budzik na 1mln mikrosekund - 1 sekundkę
     while (1) {
-        WaitOnTimer0Match0();
-        LedStepRight();
+        WaitOnTimer0Match0(); // procesor w kółko sprawdza rejestr T0IR (flagę)
+        LedStepRight(); // co sekundkę lecimy ledem w prawo
     }
 }
+// czyli zobaczymy w nieskończoność zapalające się co sekundę ledy idące w prawo!!!!!!
