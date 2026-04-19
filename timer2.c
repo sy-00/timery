@@ -1,5 +1,7 @@
 #include <LPC21xx.H>
 #include "timer.h"
+// usuwamy odpytywanie (polling) gdzie procesor był skupiony na pilnowaniu czasu
+// teraz procesor zleca pomiar czasu timerowi
 
 #define mCOUNTER_ENABLE (1<<0) 
 // To binarnie: 00000001 (Jedynka na pozycji 0)
