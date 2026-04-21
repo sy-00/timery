@@ -25,11 +25,14 @@ void WaitOnTimer0(unsigned int uiTime) {
 
 void InitTimer0Match0(unsigned int uiDelayTime) {
     T0MR0 = uiDelayTime * 15; // Wpisujemy do "budzika" (Match Register) czas
+    // do match register jest wpisywana wartosc do ktorej timer ma doliczyc
     T0MCR |= (mRESET_ON_MR0 | mINTERRUPT_ON_MR0); //| (Suma logiczna): Pozwala połączyć dwie maski.
     // Mówimy procesorowi: „Kiedy czas minie, zrób dwie rzeczy: zresetuj licznik do zera i zapal lampkę (flagę) przerwania”.
-    T0TCR |= mCOUNTER_RESET;
-    T0TCR &= ~mCOUNTER_RESET;
-    T0TCR |= mCOUNTER_ENABLE;
+    // mreset ustawia bit 1, minterrupt ustawia bit 0
+    // jesli tomcr byl pisty po tej operacji ma 0011
+    T0TCR |= mCOUNTER_RESET; // wylaczenie
+    T0TCR &= ~mCOUNTER_RESET; // cofamy wylaczenie -> mamy reset
+    T0TCR |= mCOUNTER_ENABLE; // włączenie
 }
 
 void WaitOnTimer0Match0() {
