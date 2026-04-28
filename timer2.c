@@ -257,3 +257,46 @@ void WaitOnTimer0Match0() {
     // T0IR: Gasi flagę przerwania (zapisanie 1 do czyszczenia)
     T0IR = mINTERRUPT_FLAG_MR0;
 }
+
+
+
+Napisać co robi każda linijka w funkcji InitTimer0Match0 oraz WaitOnTimer0Match0
+	
+Co się stanie, gdy zamiast T0IR = MATCH_INTERRUPT_bm zrobimy 
+T0IR |= MATCH_INTERRUPT_bm; (i dlaczego nie może być |=?)
+
+W rejestrze T0IR przerwania czyści się poprzez zapis jedynki na odpowiednim bicie.
+z |=: Jeśli w rejestrze T0IR aktywne są inne flagi przerwań (np. od MR1 lub MR2), wykonanie T0IR |= mINTERRUPT_FLAG_MR0 odczyta stan rejestru, wykona alternatywę logiczną i zapisze z powrotem jedynki na wszystkich aktywnych wcześniej bitach (wyczyścimy wszystkie inne przerwania)
+T0IR = mINTERRUPT_FLAG_MR0 gwarantuje, że traktujemy jedynką tylko w ten konkretny bit, który chcemy wyzerować
+
+Pokazać w dokumentacji, ze jak wpisujemy do rejestru T0IR logiczne 1, to czyści on (wpisuje 0) przerwanie
+
+strona 217
+
+Co do warunku while(T0TC < uiTargetDelay){}. Dlaczego nie może być !=? Zrobić tak, żeby mogło być != (należy użyć rejestru PR -prescale register).
+
+T0TC zmienia się bardzo szybko. Jeśli procesor spóźni się z wykonaniem sprawdzenia warunku w pętli while o choćby jeden cykl zegara (np. przez obsługę innego przerwania), licznik może przeskoczyć wartość docelową (z 14 na 16). Wtedy warunek T0TC != 15 zawsze będzie prawdziwy, a program wpadnie w nieskończoną pętlę, czekając, aż licznik osiągnie swoją maksymalną wartość (rzędu miliardów - blisko 5 minut).
+
+Należy ustawić preskaler tak, aby licznik T0TC zwiększał się znacznie rzadziej (np. raz na 1 ms).
+Wpisujemy do T0PR wartość (np. 14999 dla zegara 15MHz), co sprawi, że T0TC będzie rósł co 1 ms. Dla 1us wpisujemy 15.
+Wtedy procesor ma miliony cykli na zauważenie momentu, w którym T0TC == uiTargetDelay. Szansa na przeskoczenie wartości przy != spada do zera w normalnych warunkach.
+T0PR = 14;                  // Ustaw preskaler: TC zwieksza sie co (PR+1) cykli
+                                // Dla 15MHz: 14+1 = 15 cykli = 1 mikrosekunda
+
+Wtedy zmiana na:
+void WaitOnTimer0_Safe(unsigned int uiTime) {
+    T0TCR |= mCOUNTER_RESET;   
+    T0PR = 14;                 
+    T0TCR &= (~mCOUNTER_RESET);
+    while (T0TC != uiTime) {} 
+}
+
+Wcześniej:
+void WaitOnTimer0(unsigned int uiTime) {
+    T0TCR |= mCOUNTER_RESET;
+    T0TCR &= (~mCOUNTER_RESET);
+    while (T0TC < ((uiTime) * 15)) {}
+}
+
+Zapisać komentarz do każdej operacji na rejestrze -  w jakim celu ona tam jest?
+
