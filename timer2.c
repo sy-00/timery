@@ -26,21 +26,28 @@ void WaitOnTimer0(unsigned int uiTime) {
 void InitTimer0Match0(unsigned int uiDelayTime) {
     T0MR0 = uiDelayTime * 15; // Wpisujemy do "budzika" (Match Register) czas
     // do match register jest wpisywana wartosc do ktorej timer ma doliczyc
+    // Ustawia wartość w rejestrze Match Register 0. Mnożnik 15 wynika z częstotliwości zegara (15 MHz), aby uzyskać czas w mikrosekundach.
     T0MCR |= (mRESET_ON_MR0 | mINTERRUPT_ON_MR0); //| (Suma logiczna): Pozwala połączyć dwie maski.
     // Mówimy procesorowi: „Kiedy czas minie, zrób dwie rzeczy: zresetuj licznik do zera i zapal lampkę (flagę) przerwania”.
     // mreset ustawia bit 1, minterrupt ustawia bit 0
     // jesli tomcr byl pisty po tej operacji ma 0011
+    // Konfiguruje rejestr kontrolny dopasowania (Match Control Register). Ustawia flagi tak, aby przy zrównaniu się licznika z T0MR0 nastąpił reset licznika (T0TC) oraz wygenerowanie przerwania.
     T0TCR |= mCOUNTER_RESET; // wylaczenie
+    // Ustawia bit resetu w Timer Control Register. Powoduje to natychmiastowe wyzerowanie licznika T0TC i preskalera.
     T0TCR &= ~mCOUNTER_RESET; // cofamy wylaczenie -> mamy reset
+    //  Zdejmuje bit resetu, aby licznik mógł zacząć liczyć.
     T0TCR |= mCOUNTER_ENABLE; // włączenie
+    //Uruchamia licznik (włącza odliczanie).
 }
 
 void WaitOnTimer0Match0() {
     while ((T0IR & mINTERRUPT_FLAG_MR0) == 0) {} //T0IR to rejestr flag (Interrupt Register). 
     // Operacja & (AND) działa jak filtr – wycina wszystko inne i patrzy tylko, czy bit „dzwonka” się zapalił.
     //Jeśli wynik to 0, znaczy, że jeszcze nie dzwoniło.
+    // while ((T0IR & mINTERRUPT_FLAG_MR0) == 0) {} – Pętla oczekiwania (polling). Sprawdza bit przerwania w Interrupt Register. Jeśli jest 0, Timer jeszcze nie doliczył do wartości Match.
     T0IR = mINTERRUPT_FLAG_MR0; // Kasowanie: W tym procesorze, aby „zgasić lampkę” dzwonka, trzeba do niej paradoksalnie wpisać „1”. 
     // To sygnał dla sprzętu: „Odebrałem wiadomość, możesz zgasić flagę”.
+    // T0IR = mINTERRUPT_FLAG_MR0; – Czyści flagę przerwania, aby umożliwić wykrycie kolejnego zdarzenia w przyszłości.
 }
 
 
@@ -82,3 +89,77 @@ void WaitOnTimer0Match0() {
 // impulsy/mikrosekundy = 15mln/1mln = 15
 // => jeśli chcemy kazać licznikowy czekać 1 mikrosekunde to każemy mu czekać 15 impulsów
 
+
+
+
+#include <LPC21xx.H>
+#include "timer.h"
+
+#define mCOUNTER_ENABLE (1<<0) 
+#define mCOUNTER_RESET (1<<1) 
+#define mRESET_ON_MR0 (1<<1)
+#define mINTERRUPT_ON_MR0 (1<<0)
+#define mINTERRUPT_FLAG_MR0 (1<<0)
+
+void InitTimer0(void) {
+    T0TCR = mCOUNTER_ENABLE;
+}
+
+void WaitOnTimer0(unsigned int uiTime) {
+    T0TCR |= mCOUNTER_RESET;
+    T0TCR &= (~mCOUNTER_RESET);
+    while (T0TC < ((uiTime) * 15)) {}
+}
+
+void InitTimer0Match0(unsigned int uiDelayTime) {
+    T0MR0 = uiDelayTime * 15;
+    T0MCR |= (mRESET_ON_MR0 | mINTERRUPT_ON_MR0);
+    T0TCR |= mCOUNTER_RESET;
+    T0TCR &= ~mCOUNTER_RESET;
+    T0TCR |= mCOUNTER_ENABLE;
+}
+
+void WaitOnTimer0Match0() {
+    while ((T0IR & mINTERRUPT_FLAG_MR0) == 0) {}
+    T0IR = mINTERRUPT_FLAG_MR0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+void InitTimer0(void) {
+    T0TCR = mCOUNTER_ENABLE; // CEL: Aktywacja zliczania impulsów przez Timer0
+}
+
+void WaitOnTimer0(unsigned int uiTime) {
+    T0TCR |= mCOUNTER_RESET;    // CEL: Wymuszenie stanu zerowego licznika przed startem odliczania
+    T0TCR &= (~mCOUNTER_RESET); // CEL: Zwolnienie blokady resetu, aby licznik mógł ruszyć
+    while (T0TC < ((uiTime) * 15)) {} // CEL: Oczekiwanie (pętla jałowa) aż licznik osiągnie limit
+}
+
+void InitTimer0Match0(unsigned int uiDelayTime) {
+    T0MR0 = uiDelayTime * 15;   // CEL: Zdefiniowanie konkretnej wartości (punktu), przy której wystąpi zdarzenie
+    
+    // CEL: Konfiguracja zachowania sprzetu - automatyczny reset i flaga po dopasowaniu
+    T0MCR |= (mRESET_ON_MR0 | mINTERRUPT_ON_MR0); 
+    
+    T0TCR |= mCOUNTER_RESET;    // CEL: Synchronizacja - upewnienie się, że liczymy od zera
+    T0TCR &= ~mCOUNTER_RESET;   // CEL: Zakończenie fazy resetowania (przygotowanie do pracy)
+    T0TCR |= mCOUNTER_ENABLE;   // CEL: Uruchomienie mechanizmu odliczania czasu
+}
+
+void WaitOnTimer0Match0() {
+    // CEL: Monitorowanie flagi przerwania sprzętowego (sprawdzanie czy czas upłynął)
+    while ((T0IR & mINTERRUPT_FLAG_MR0) == 0) {} 
+    
+    // CEL: Potwierdzenie obsługi przerwania (skasowanie flagi), by móc wykryć kolejne dopasowanie
+    T0IR = mINTERRUPT_FLAG_MR0; 
+}
