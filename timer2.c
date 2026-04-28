@@ -163,3 +163,93 @@ void WaitOnTimer0Match0() {
     // CEL: Potwierdzenie obsługi przerwania (skasowanie flagi), by móc wykryć kolejne dopasowanie
     T0IR = mINTERRUPT_FLAG_MR0; 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#include <LPC21xx.H>
+#include "timer.h"
+
+// Definicje masek bitowych
+#define mCOUNTER_ENABLE (1<<0)      // Rejestr T0TCR, bit 0: Włącznik licznika
+#define mCOUNTER_RESET (1<<1)       // Rejestr T0TCR, bit 1: Resetuje licznik
+#define mRESET_ON_MR0 (1<<1)        // Rejestr T0MCR, bit 1: Automatyczny reset TC
+#define mINTERRUPT_ON_MR0 (1<<0)    // Rejestr T0MCR, bit 0: Generuj przerwanie
+#define mINTERRUPT_FLAG_MR0 (1<<0)  // Rejestr T0IR, bit 0: Flaga przerwania
+
+void InitTimer0(void) {
+    // T0TCR: Ustawienie bitu 0 - włączenie timera
+    T0TCR = mCOUNTER_ENABLE;
+}
+
+void WaitOnTimer0(unsigned int uiTime) {
+    // T0TCR: Ustawienie bitu 1 - reset licznika
+    T0TCR |= mCOUNTER_RESET;
+    // T0TCR: Czyszczenie bitu 1 - zwolnienie resetu
+    T0TCR &= (~mCOUNTER_RESET);
+    // Pętla czekająca, aż T0TC osiągnie zadaną wartość
+    while (T0TC < ((uiTime) * 15)) {}
+}
+
+void InitTimer0Match0(unsigned int uiDelayTime) {
+    // Ustawienie wartości dopasowania (Match Register 0)
+    T0MR0 = uiDelayTime * 15;
+    // T0MCR: Konfiguracja MR0: reset i przerwanie
+    T0MCR |= (mRESET_ON_MR0 | mINTERRUPT_ON_MR0);
+    // T0TCR: Reset licznika przed startem
+    T0TCR |= mCOUNTER_RESET;
+    // T0TCR: Zwolnienie resetu
+    T0TCR &= ~mCOUNTER_RESET;
+    // T0TCR: Uruchomienie timera
+    T0TCR |= mCOUNTER_ENABLE;
+}
+
+void WaitOnTimer0Match0() {
+    // Czekanie na zapalenie flagi przerwania (bit 0 w T0IR)
+    while ((T0IR & mINTERRUPT_FLAG_MR0) == 0) {}
+    // T0IR: Gasi flagę przerwania (zapisanie 1 do czyszczenia)
+    T0IR = mINTERRUPT_FLAG_MR0;
+}
