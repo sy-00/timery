@@ -1,3 +1,7 @@
+//Konkretnie muszą się ze sobą zrównać wartości w dwóch rejestrach (licznikach) wewnątrz procesora:
+//T0TC (Timer Counter): To jest Twój bieżący licznik (stoper). On cały czas rośnie (0, 1, 2, 3...), bo jest napędzany zegarem procesora.
+//T0MR0 (Match Register 0): To jest Twoja wartość docelowa (budzik). Wpisałeś tam konkretną liczbę (np. 15 000 000) w linijce T0MR0 = uiDelayTime * 15;.
+
 #include <LPC21xx.H>
 #include "timer.h"
 // usuwamy odpytywanie (polling) gdzie procesor był skupiony na pilnowaniu czasu
